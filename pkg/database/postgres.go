@@ -7,6 +7,8 @@ import (
 	"song-library/pkg/logger"
 	"time"
 
+	_ "github.com/lib/pq"
+
 	"github.com/tinrab/retry"
 	"go.uber.org/zap"
 )
@@ -17,8 +19,11 @@ func NewPostgresConnection(cfg *config.Postgres) (*sql.DB, error) {
 	var err error
 
 	retry.ForeverSleep(time.Second*2, func(i int) error {
-		db, err = sql.Open("postgres", fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s",
-			cfg.Host, cfg.Port, cfg.User, cfg.DBName, cfg.Password))
+		fmt.Printf("host=%s port=%s user=%s dbname=%s sslmode=%s password=%s",
+			cfg.Host, cfg.Port, cfg.User, cfg.DBName, cfg.SslMode, cfg.Password)
+
+		db, err = sql.Open("postgres", fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=%s password=%s",
+			cfg.Host, cfg.Port, cfg.User, cfg.DBName, cfg.SslMode, cfg.Password))
 		if err != nil {
 			logger.Error(fmt.Sprintf("postgres connection, err - %v", err),
 				zap.Any("host", cfg.Host),

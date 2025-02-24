@@ -10,6 +10,7 @@ import (
 	"song-library/internal/repository"
 
 	dbRepos "song-library/internal/repository/database"
+	httpserver "song-library/internal/server/http"
 	"song-library/internal/service"
 	"song-library/internal/status"
 	httphandler "song-library/internal/transport/http"
@@ -26,18 +27,18 @@ func main() {
 	ctx := context.Background()
 	cfg := config.MustInit(os.Getenv("IS_PROD"))
 
-	mainPC, mainPCErr := postgres.NewPostgresConnection(&cfg.Postgres)
-	if mainPCErr == nil {
+	pc, pcErr := postgres.NewPostgresConnection(&cfg.Postgres)
+	if pcErr == nil {
 		logger.Info("postgres connection established!")
 	}
 
-	dbRepo := dbRepos.New(mainPC, cfg)
+	dbRepo := dbRepos.New(pc, &cfg)
 	r := repository.New(dbRepo)
-	s := service.New(ctx, r, stat, cfg)
-	hh := httphandler.New(s, cfg)
+	s := service.New(ctx, r, stat, &cfg)
+	hh := httphandler.New(s, &cfg)
 	logger.Info("transports, services, handlers instantiated!")
 
-	hsrv := httpserver.New(cfg, hh.Init())
+	hsrv := httpserver.New(&cfg, hh.Init())
 	go func() {
 		hsrv.MustRun()
 	}()
@@ -53,7 +54,7 @@ func main() {
 				}
 			}
 		}
-	}(mainPC)
+	}(pc)
 
 	logger.Error("All services have started, ready to receive requests")
 

@@ -1,44 +1,30 @@
-package httpserver
+package v1
 
 import (
-	"context"
-	"net/http"
-	config "song-library/internal/config"
-	"time"
+	"song-library/internal/config"
+	"song-library/internal/service"
 
-	"song-library/pkg/logger"
+	music "song-library/internal/transport/http/v1/music"
+
+	"github.com/gin-gonic/gin"
 )
 
-// Server структура для HTTP-сервера
-type Server struct {
-	httpServer *http.Server
+type V1Handler struct {
+	services *service.Service
 }
 
-// New создает новый HTTP-сервер
-func New(cfg config.Config, handler http.Handler) *Server {
-	return &Server{
-		httpServer: &http.Server{
-			Addr:         cfg.HTTPServer.Address,
-			Handler:      handler,
-			ReadTimeout:  5 * time.Second,
-			WriteTimeout: 10 * time.Second,
-			IdleTimeout:  60 * time.Second,
-		},
+func NewV1Handler(s *service.Service) *V1Handler {
+	return &V1Handler{
+		services: s,
 	}
 }
 
-// MustRun запускает сервер и падает с фатальной ошибкой в случае неудачи
-func (s *Server) MustRun() {
-	logger.Info("Starting HTTP server on " + s.httpServer.Addr)
-	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		logger.Fatal("HTTP server error: " + err.Error())
-	}
-}
+func (h *V1Handler) InitV1Handler(c *config.Config, api *gin.RouterGroup) {
+	musicHandler := music.New(h.services)
 
-// Stop корректно останавливает сервер
-func (s *Server) Stop(ctx context.Context) {
-	logger.Info("Shutting down HTTP server...")
-	if err := s.httpServer.Shutdown(ctx); err != nil {
-		logger.Error("HTTP server shutdown error: " + err.Error())
+	v1 := api.Group("/")
+	{
+		musicHandler.InitMusicRoute(v1)
+
 	}
 }

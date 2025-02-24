@@ -8,23 +8,35 @@ import (
 
 // Config содержит конфигурационные параметры приложения
 type Config struct {
-	Postgres   Postgres `mapstructure:"postgres"`
-	HTTPServer HTTPConfig     `mapstructure:"httpserver"`
+	Postgres    Postgres   `mapstructure:"postgres"`
+	HTTPServer  HTTPConfig `mapstructure:"httpserver"`
+	Environment Environment
+	HTTP        HTTP
 }
 
 // Postgres хранит настройки подключения к БД
 type Postgres struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	User     string `mapstructure:"user"`
-	Password string `mapstructure:"password"`
-	DBName   string `mapstructure:"dbname"`
-	SSLMode  string `mapstructure:"sslmode"`
+	Host     string
+	Port     string
+	User     string
+	Password string
+	DBName   string
+	SslMode  string
+}
+
+type HTTP struct {
+	Port uint16
 }
 
 // HTTPConfig хранит настройки HTTP-сервера
 type HTTPConfig struct {
 	Address string `mapstructure:"address"`
+}
+
+type Environment struct { // TODO: change name!!! add doc!
+	RootRouter   string
+	RouterHost   string
+	PathToPublic string
 }
 
 // MustInit загружает конфигурацию
