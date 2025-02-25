@@ -3,57 +3,28 @@ package config
 import (
 	"log"
 
-	"github.com/spf13/viper"
+	"os"
+
+	"gopkg.in/yaml.v2"
 )
 
-// Config содержит конфигурационные параметры приложения
 type Config struct {
-	Postgres    Postgres   `mapstructure:"postgres"`
-	HTTPServer  HTTPConfig `mapstructure:"httpserver"`
-	Environment Environment
-	HTTP        HTTP
+	API struct {
+		ExternalURL string `yaml:"external_url"`
+	} `yaml:"api"`
 }
 
-// Postgres хранит настройки подключения к БД
-type Postgres struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	DBName   string
-	SslMode  string
-}
+var AppConfig Config
 
-type HTTP struct {
-	Port uint16
-}
-
-// HTTPConfig хранит настройки HTTP-сервера
-type HTTPConfig struct {
-	Address string `mapstructure:"address"`
-}
-
-type Environment struct { // TODO: change name!!! add doc!
-	RootRouter   string
-	RouterHost   string
-	PathToPublic string
-}
-
-// MustInit загружает конфигурацию
-func MustInit(isProd string) Config {
-	viper.SetConfigName("config")   // Имя файла (без расширения)
-	viper.SetConfigType("yaml")     // Тип файла
-	viper.AddConfigPath("./config") // Папка с конфигом
-
-	// Читаем конфиг
-	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalf("Ошибка чтения конфига: %v", err)
+func LoadConfig() {
+	file, err := os.Open("config/config.yaml")
+	if err != nil {
+		log.Fatalf("Failed to open config file: %v", err)
 	}
+	defer file.Close()
 
-	var cfg Config
-	if err := viper.Unmarshal(&cfg); err != nil {
-		log.Fatalf("Ошибка декодирования конфига: %v", err)
+	decoder := yaml.NewDecoder(file)
+	if err := decoder.Decode(&AppConfig); err != nil {
+		log.Fatalf("Failed to parse config: %v", err)
 	}
-
-	return cfg
 }

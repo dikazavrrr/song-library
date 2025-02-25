@@ -1,4 +1,137 @@
+basePath: /
+definitions:
+  domain.Songs:
+    properties:
+      group:
+        type: string
+      id:
+        type: integer
+      link:
+        type: string
+      lyrics:
+        type: string
+      releaseDate:
+        type: string
+      song:
+        type: string
+    type: object
+host: localhost:8080
 info:
   contact: {}
-paths: {}
+  description: API для управления песнями.
+  title: Song API
+  version: "1.0"
+paths:
+  /songs:
+    get:
+      description: Возвращает список всех песен в базе данных.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Songs'
+            type: array
+      summary: Получить все песни
+      tags:
+      - Songs
+  /songs/{id}:
+    delete:
+      description: Удаляет песню из базы данных по её ID.
+      parameters:
+      - description: ID песни
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Сообщение об успешном удалении
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'Ошибка: некорректный ID'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Ошибка при удалении
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Удалить песню
+      tags:
+      - Songs
+    get:
+      description: Возвращает данные о конкретной песне по её ID.
+      parameters:
+      - description: ID песни
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Songs'
+        "400":
+          description: 'Ошибка: некорректный ID'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'Ошибка: песня не найдена'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить песню по ID
+      tags:
+      - Songs
+    put:
+      consumes:
+      - application/json
+      description: Обновляет данные песни в базе данных по её ID.
+      parameters:
+      - description: ID песни
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные песни
+        in: body
+        name: song
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Songs'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Songs'
+        "400":
+          description: 'Ошибка: некорректный ввод'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Ошибка при обновлении
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Обновить песню
+      tags:
+      - Songs
 swagger: "2.0"

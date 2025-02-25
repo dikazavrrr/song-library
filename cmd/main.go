@@ -1,72 +1,61 @@
 package main
 
 import (
-	"context"
-	"database/sql"
-	"fmt"
-	"os"
-	"os/signal"
+	"log"
 	"song-library/internal/config"
-	"song-library/internal/repository"
+	router "song-library/internal/transport"
+	db "song-library/migrations"
 
-	dbRepos "song-library/internal/repository/database"
-	httpserver "song-library/internal/server/http"
-	"song-library/internal/service"
-	"song-library/internal/status"
-	httphandler "song-library/internal/transport/http"
-	postgres "song-library/pkg/database"
+	"song-library/pkg/domain"
 
-	"song-library/pkg/logger"
-	"syscall"
+	_ "song-library/docs"
+
+	"github.com/joho/godotenv"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+// @title Song API
+// @version 1.0
+// @description API для управления песнями.
+// @host localhost:8080
+// @BasePath /
 func main() {
-	logger.ZapLoggerInit()
+	log.Println("[INFO] Starting Song API service...")
 
-	stat := status.NewStatus()
-	ctx := context.Background()
-	cfg := config.MustInit(os.Getenv("IS_PROD"))
-
-	pc, pcErr := postgres.NewPostgresConnection(&cfg.Postgres)
-	if pcErr == nil {
-		logger.Info("postgres connection established!")
+	// Загрузка переменных окружения из .env
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
 	}
 
-	dbRepo := dbRepos.New(pc, &cfg)
-	r := repository.New(dbRepo)
-	s := service.New(ctx, r, stat, &cfg)
-	hh := httphandler.New(s, &cfg)
-	logger.Info("transports, services, handlers instantiated!")
+	config.LoadConfig()
+	log.Println("External API URL:", config.AppConfig.API.ExternalURL)
 
-	hsrv := httpserver.New(&cfg, hh.Init())
-	go func() {
-		hsrv.MustRun()
-	}()
-	defer hsrv.Stop(context.Background())
+	log.Println("[INFO] .env file loaded successfully")
 
-	defer func(postgresConns ...*sql.DB) {
-		for i, pc := range postgresConns {
-			if pc != nil {
-				err := pc.Close()
-				if err != nil {
-					logger.Error(fmt.Sprintf("postgres: failed to close "+
-						"connection '%d', err: %v", i, err.Error()))
-				}
-			}
-		}
-	}(pc)
+	// Инициализация базы данных
+	dbConn, err := db.InitDB()
+	if err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+	defer dbConn.Close()
+	log.Println("[INFO] Connected to database")
 
-	logger.Error("All services have started, ready to receive requests")
+	sqlDB := dbConn.DB()
+	if err := sqlDB.Ping(); err != nil {
+		log.Fatalf("[ERROR] Database is not reachable: %v", err)
+	}
 
-	awaitStop(ctx)
-}
+	// Автоматическая миграция модели Song
+	dbConn.AutoMigrate(&domain.Songs{})
 
-func awaitStop(ctx context.Context) {
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
-	osSignal := <-quit
+	log.Println("[INFO] Database migrated successfully")
+	// Настройка маршрутов
+	r := router.SetupRoutes(dbConn)
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	ctx.Done()
-
-	logger.Info(fmt.Sprintf("program shutdown... call_type: %v", osSignal))
+	// Запуск сервера на указанном порту (например, 8080)
+	if err := r.Run(":8080"); err != nil {
+		log.Fatal("Failed to run server:", err)
+	}
 }
